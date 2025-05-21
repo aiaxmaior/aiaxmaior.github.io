@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CARLA Simulator AI-Driven Behavioral Analysis: Data Pipeline Proposal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F9FAFB; /* Tailwind gray-50 */
+        }
+        .brand-text-orange { color: #FF7F50; }
+        .brand-bg-orange { background-color: #FF7F50; }
+        .brand-text-yellow { color: #FFD700; }
+        .brand-bg-yellow { background-color: #FFD700; }
+        .brand-text-teal { color: #20B2AA; }
+        .brand-bg-teal { background-color: #20B2AA; }
+        .brand-text-pink { color: #FF69B4; }
+        .brand-bg-pink { background-color: #FF69B4; }
+        .brand-accent-lightcoral { color: #FFA07A; }
+
+        .stat-card {
+            background-color: white;
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1.5rem; /* p-6 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            height: 100%; /* Ensure cards in a grid row have same height */
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+        }
+        .chart-container {
+            position: relative;
+            margin-left: auto;
+            margin-right: auto;
+            height: 20rem; /* h-80 */
+            width: 100%;
+            max-width: 42rem; /* max-w-xl */
+        }
+        @media (min-width: 640px) { /* sm */
+            .chart-container {
+                height: 22rem; /* sm:h-88 */
+            }
+        }
+        @media (min-width: 768px) { /* md */
+            .chart-container {
+                height: 24rem; /* md:h-96 */
+            }
+        }
+        .flowchart-step {
+            background-color: #20B2AA; /* brand-bg-teal */
+            color: white;
+            padding: 0.75rem 1.25rem; /* p-3 md:p-5 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+            text-align: center;
+            flex-grow: 1;
+            margin: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 80px; /* Ensure consistent height for steps */
+        }
+        .flowchart-arrow {
+            font-size: 2.25rem; /* text-4xl */
+            color: #FF7F50; /* brand-text-orange */
+            margin: 0.5rem 0.5rem; /* my-2 md:mx-2 */
+            align-self: center;
+            line-height: 1;
+        }
+        h1, h2, h3 {
+            color: #1F2937; /* Tailwind gray-800 */
+        }
+        .section-intro-text {
+            color: #4B5563; /* Tailwind gray-600 */
+            font-size: 1.125rem; /* text-lg */
+            line-height: 1.75rem;
+        }
+        .content-text {
+            color: #374151; /* Tailwind gray-700 */
+            flex-grow: 1; /* Allow text to fill space in cards */
+        }
+        .highlight-stat {
+            font-size: 2.5rem; /* text-4xl sm:text-5xl */
+            font-weight: 700; /* font-bold */
+            color: #FF7F50; /* brand-text-orange */
+            line-height: 1.1;
+        }
+        .metric-card {
+            background-color: #FFFFFF;
+            padding: 1rem; /* p-4 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06); /* shadow-sm */
+            text-align: center;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .metric-value {
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 600; /* font-semibold */
+            margin-bottom: 0.25rem; /* mb-1 */
+        }
+        .metric-label {
+            font-size: 0.875rem; /* text-sm */
+            color: #6B7280; /* Tailwind gray-500 */
+            flex-grow: 1;
+        }
+        .metric-sublabel {
+            font-size: 0.75rem; /* text-xs */
+            color: #9CA3AF; /* Tailwind gray-400 */
+            margin-top: 0.25rem; /* mt-1 */
+        }
+        .sticky-nav {
+            position: sticky;
+            top: 0;
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 40;
+            box-shadow: 0 2px 4px (0,0,0,0.05);
+        }
+        .sticky-nav a {
+            transition: color 0.2s ease-in-out;
+        }
+        .sticky-nav a:hover {
+            color: #FF7F50; /* brand-text-orange */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <nav class="sticky-nav py-3">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <ul class="flex flex-wrap justify-center space-x-4 sm:space-x-6 text-sm font-medium text-gray-600">
+                <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#driver-behavior-process-flow">Process Flow</a></li>
+                <li><a href="#project-overview">Project Overview</a></li>
+                <li><a href="#core-pipeline-components">Core Components</a></li>
+                <li><a href="#performance-benchmarks">KPIs</a></li>
+                <li><a href="#development-drivers">Development Drivers</a></li>
+                <li><a href="#conclusion">Conclusion</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="bg-white shadow-md pt-16 pb-8">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 class="text-3xl sm:text-4xl font-bold brand-text-teal text-center">CARLA Simulator AI-Driven Behavioral Analysis: Data Pipeline Proposal</h1>
+            <p class="text-center text-gray-600 mt-2 text-lg">A Comprehensive Overview of Real-Time Driver Behavior Understanding</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <section id="introduction" class="mb-16 scroll-mt-20">
+            <h2 class="text-2xl sm:text-3xl font-semibold mb-6 text-center">Introduction: Enhancing Driver Analysis through AI & Simulation</h2>
+            <p class="section-intro-text text-center max-w-3xl mx-auto">
+                This document outlines a detailed data pipeline proposal for an AI-enhanced system designed to analyze vehicle operator behavior within the CARLA driving simulator. Leveraging real-world hardware-in-the-loop (HIL) input, this system aims to provide real-time feedback and comprehensive post-simulation assessments of driver performance, with an initial Proof of Concept (PoC) focused specifically on lane deviation detection.
+            </p>
+        </section>
+
+        <section id="driver-behavior-process-flow" class="mb-16 scroll-mt-20">
+            <h2 class="text-2xl sm:text-3xl font-semibold mb-8 text-center">Driver Behavior Analysis: Process Flow</h2>
+            <p class="section-intro-text text-center max-w-3xl mx-auto mb-10">
+                The transformation of raw driving data into actionable behavioral insights follows a structured value chain. This flow highlights the key stages from data acquisition to the delivery of intelligent feedback.
+            </p>
+            <div class="stat-card p-6">
+                <div class="flex flex-col items-center">
+                    <div class="flex flex-col md:flex-row flex-wrap justify-center items-stretch w-full">
+                        <div class="flowchart-step">1. Data Acquisition<br><span class="text-xs font-normal">(CARLA, Sensors, API)</span></div>
+                        <div class="flowchart-arrow hidden md:block">&rarr;</div>
+                        <div class="flowchart-arrow block md:hidden rotate-90">&rarr;</div>
+                        <div class="flowchart-step">2. Preprocessing & Caching<br><span class="text-xs font-normal">(Pandas, Cleaning)</span></div>
+                        <div class="flowchart-arrow hidden md:block">&rarr;</div>
+                        <div class="flowchart-arrow block md:hidden rotate-90">&rarr;</div>
+                        <div class="flowchart-step">3. Feature Engineering & Initial Scoring<br><span class="text-xs font-normal">(Contextual Features, Gradient Boosting Score)</span></div>
+                    </div>
+                    <div class="w-full flex justify-end">
+                        <div class="flowchart-arrow my-4">&darr;</div>
+                    </div>
+                    <div class="flex flex-col md:flex-row-reverse flex-wrap justify-center items-stretch w-full">
+                        <div class="flowchart-step">4. Predictive Analytics<br><span class="text-xs font-normal">(Transformer Model Analysis)</span></div>
+                        <div class="flowchart-arrow hidden md:block">&larr;</div>
+                        <div class="flowchart-arrow block md:hidden rotate-90">&rarr;</div>
+                        <div class="flowchart-step">5. LLM Interpretation & Feedback Generation<br><span class="text-xs font-normal">(Natural Language, Corrective Actions)</span></div>
+                        <div class="flowchart-arrow hidden md:block">&larr;</div>
+                        <div class="flowchart-arrow block md:hidden rotate-90">&rarr;</div>
+                        <div class="flowchart-step">6. Insight Delivery<br><span class="text-xs font-normal">(HUD, TTS Audio)</span></div>                                          
+                    </div>
+                </div>
+                <p class="content-text mt-6 text-center">This streamlined process is essential for solutions targeting real-time applications, ensuring rapid conversion of complex data streams into understandable and actionable feedback.</p>
+            </div>
+        </section>
+
+        <section id="project-overview" class="mb-16 scroll-mt-20">
+            <h2 class="text-2xl sm:text-3xl font-semibold mb-8 text-center">Project Overview: Key Metrics & Throughput</h2>
+             <p class="section-intro-text text-center max-w-3xl mx-auto mb-8">
+                The foundation of this project lies in its capacity to process vast amounts of high-frequency simulation data, enabling immediate insights and actionable feedback for driver analysis.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="stat-card text-center">
+                    <div class="mb-auto">
+                        <h3 class="text-xl font-semibold mb-2 brand-text-teal">Data Ingestion Velocity</h3>
+                        <p class="highlight-stat">20</p>
+                        <p class="content-text text-lg">Data Points/Second</p>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-4">High-frequency data capture from CARLA simulations and Fanatec hardware forms the bedrock of real-time behavioral analysis.</p>
+                </div>
+                <div class="stat-card text-center">
+                     <div class="mb-auto">
+                        <h3 class="text-xl font-semibold mb-2 brand-text-teal">Analytical Throughput</h3>
+                        <p class="highlight-stat">&lt;1s</p>
+                        <p class="content-text text-lg">Target Latency</p>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-4">Critical performance target for real-time feedback, enabled by optimized Transformer models and Flash Attention 2.</p>
+                </div>
+                <div class="stat-card text-center">
+                    <div class="mb-auto">
+                        <h3 class="text-xl font-semibold mb-2 brand-text-teal">LLM Input Efficiency</h3>
+                        <p class="highlight-stat">20-50</p>
+                        <p class="content-text text-lg">Tokens/Data Point</p>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-4">Efficient data packaging for Large Language Models, balancing rich context with rapid processing for natural language feedback.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="core-pipeline-components" class="mb-16 scroll-mt-20">
+            <h2 class="text-2xl sm:text-3xl font-semibold mb-8 text-center">Core Pipeline Components & Technologies</h2>
+            <p class="section-intro-text text-center max-w-3xl mx-auto mb-10">
+                The behavioral analysis pipeline is built upon a synergistic stack of specialized technologies, each vital for transforming raw simulation data into actionable driver insights.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="stat-card">
+                    <h3 class="text-xl font-semibold mb-3 brand-text-orange">Initial Scoring: Gradient Boosting Feature Importance</h3>
+                    <p class="content-text mb-4">Gradient Boosting models (e.g., LightGBM, XGBoost) are pivotal for initial data assessment and generating a `lane_deviation_safety_score`. Feature importance analysis reveals critical driving parameters influencing this score, such as 'deviation from lane center' and 'vehicle momentum'.</p>
+                    <div class="chart-container h-80 sm:h-96">
+                        <canvas id="featureImportanceChart"></canvas>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-4 text-center">Illustrative feature importance for the lane deviation safety scoring model.</p>
+                </div>
+                <div class="stat-card">
+                    <h3 class="text-xl font-semibold mb-3 brand-text-pink">Intelligent Feedback: LLM Model Selection</h3>
+                    <p class="content-text mb-4">Large Language Models (LLMs) provide natural language interpretation of driver behavior. Model selection involves balancing complexity and reasoning capabilities (e.g., Chain-of-Thought) with real-time latency requirements.</p>
+                    <div class="chart-container h-80 sm:h-96">
+                        <canvas id="llmComparisonChart"></canvas>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-4 text-center">Comparison of LLM sizes (parameter counts) considered for behavioral feedback.</p>
+                </div>
+            </div>
+             <div class="mt-8 stat-card">
+                <h3 class="text-xl font-semibold mb-4 brand-text-teal">Key Technology Stack Components</h3>
+                <p class="content-text mb-3">The proposed high-performance analytics stack includes:</p>
+                <ul class="list-none space-y-3">
+                    <li class="flex items-start"><span class="brand-text-orange font-bold mr-2 text-xl">📊</span><div><strong>Data Acquisition:</strong> CARLA Simulator and Fanatec hardware for rich, real-time data.</div></li>
+                    <li class="flex items-start"><span class="brand-text-yellow font-bold mr-2 text-xl">⚙️</span><div><strong>Data Processing & Caching:</strong> Python APIs and Pandas DataFrames for efficient handling and temporary storage.</div></li>
+                    <li class="flex items-start"><span class="brand-text-pink font-bold mr-2 text-xl">🔍</span><div><strong>Initial Scoring & Feature Engineering:</strong> Gradient Boosting models for robust analysis and initial risk scoring (e.g., `lane_deviation_safety_score`).</div></li>
+                    <li class="flex items-start"><span class="brand-accent-lightcoral font-bold mr-2 text-xl">🧠</span><div><strong>Core Predictive Analytics (Transformer Models - Encoder Only):</strong>
+                        <ul class="list-disc list-inside ml-6 space-y-1">
+                            <li>BERT_Base_Uncased</li>
+                            <li>DistilBERT_base_uncased</li>
+                            <li>MiniLM (Microsoft)</li>
+                        </ul>
+                    </div></li>
+                    <li class="flex items-start"><span class="brand-text-teal font-bold mr-2 text-xl">💬</span><div><strong>Natural Language Interpretation (Real-time LLM Implementation):</strong>
+                        <ul class="list-disc list-inside ml-6 space-y-1">
+                            <li>Nemotron-1.5B-COT (Chain of Thought)</li>
+                            <li>Nemotron-1.5B-TIR (Tool Integrated Reasoning)</li>
+                            <li>Qwen3-0.6B-MATH-EXPERT</li>
+                        </ul>
+                    </div></li>
+                    <li class="flex items-start"><span class="brand-text-orange font-bold mr-2 text-xl">🖥️</span><div><strong>Output & Interaction:</strong> Heads-Up Displays (HUD) for visual feedback and Text-to-Speech (TTS) systems (e.g., Coqui, Bark) for auditory alerts.</div></li>
+                </ul>
+                <p class="content-text mt-4">This integrated stack emphasizes speed, accuracy, and interpretability to deliver actionable intelligence for driver behavior analysis.</p>
+            </div>
+        </section>
+
+        <section id="performance-benchmarks" class="mb-16 scroll-mt-20">
+            <h2 class="text-2xl sm:text-3xl font-semibold mb-8 text-center">Performance Benchmarks & Key Project Indicators (KPIs)</h2>
+            <p class="section-intro-text text-center max-w-3xl mx-auto mb-10">
+                Rigorous performance evaluation is standard for this project. Key metrics across different analytical stages define the efficacy and reliability of the solution, particularly for real-time lane deviation detection.
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="metric-card">
+                    <h3 class="text-lg font-semibold mb-1 brand-text-orange">Gradient Boosting KPIs</h3>
+                    <p class="metric-value">R² > 0.85</p>
+                    <p class="metric-label">Initial Score Prediction Accuracy</p>
+                    <p class="metric-sublabel">MSE and RMSE also monitored for scoring model fidelity.</p>
+                </div>
+                <div class="metric-card">
+                    <h3 class="text-lg font-semibold mb-1 brand-text-pink">Transformer Model KPIs</h3>
+                    <p class="metric-value">F1 > 0.90</p>
+                    <p class="metric-label">Behavioral Event Prediction (e.g., Lane Violation)</p>
+                    <p class="metric-sublabel">Accuracy, Precision, Recall for classification tasks.</p>
+                </div>
+                <div class="metric-card">
+                    <h3 class="text-lg font-semibold mb-1 brand-text-yellow">Transformer Latency</h3>
+                    <p class="metric-value">&lt; 500ms</p>
+                    <p class="metric-label">Core Predictive Model Inference Speed</p>
+                    <p class="metric-sublabel">Excludes I/O, critical for real-time response.</p>
+                </div>
+                <div class="metric-card">
+                    <h3 class="text-lg font-semibold mb-1 brand-text-orange">LLM Text Quality</h3>
+                    <p class="metric-value">BLEU > 0.6</p>
+                    <p class="metric-label">Feedback Fluency & Coherence</p>
+                    <p class="metric-sublabel">Perplexity also tracked for language generation quality.</p>
+                </div>
+                <div class="metric-card">
+                    <h3 class="text-lg font-semibold mb-1 brand-text-pink">LLM User Acceptance</h3>
+                    <p class="metric-value">4.5/5 Stars</p>
+                    <p class="metric-label">Feedback Helpfulness & Naturalness</p>
+                    <p class="metric-sublabel">Based on subjective human evaluation ratings.</p>
+                </div>
+                <div class="metric-card">
+                    <h3 class="text-lg font-semibold mb-1 brand-text-yellow">End-to-End System Latency</h3>
+                    <p class="metric-value">&lt; 1 sec</p>
+                    <p class="metric-label">Total Pipeline Speed (Data to Feedback)</p>
+                    <p class="metric-sublabel">Ensures timely delivery of actionable insights.</p>
+                </div>
+            </div>
+            <p class="content-text mt-8 text-center">Meeting these benchmarks is indicative of high-performance real-time analytical systems capable of delivering reliable and timely behavioral insights.</p>
+        </section>
+
+        <section id="development-drivers" class="mb-16 scroll-mt-20">
+            <h2 class="text-2xl sm:text-3xl font-semibold mb-8 text-center">Development Drivers & Future Capabilities</h2>
+            <p class="section-intro-text text-center max-w-3xl mx-auto mb-10">
+                The project's evolution is propelled by continuous innovation in data techniques, AI model architectures, and hardware capabilities, leading to more sophisticated and impactful solutions for driver analysis.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="stat-card">
+                    <h3 class="text-xl font-semibold mb-4 brand-text-teal">Advanced Data Augmentation Strategies</h3>
+                    <p class="content-text mb-3">Enhancing dataset robustness and model generalization is a key development strategy. Leading techniques include:</p>
+                    <ul class="list-disc list-inside content-text space-y-2 pl-4">
+                        <li><strong>Geometric Transformations:</strong> Simulating variations in perspective and positioning (e.g., rotations, shifts of behavioral data).</li>
+                        <li><strong>Environmental Simulation:</strong> Adjusting parameters like brightness/contrast for visual data, or injecting realistic sensor noise to mimic diverse operating conditions.</li>
+                        <li><strong>Synthetic Data Generation:</strong> Future trend towards using GANs to create highly realistic, diverse, and rare behavioral scenarios for training.</li>
+                    </ul>
+                    <p class="content-text mt-4">These methods enable the development of more resilient and accurate analytical models, particularly when real-world data for edge cases is scarce.</p>
+                </div>
+                <div class="stat-card">
+                    <h3 class="text-xl font-semibold mb-4 brand-text-orange">Shift Towards Predictive & Pre-emptive Analytics</h3>
+                    <p class="content-text mb-3">A significant project capability is the evolution from reactive to pre-emptive analytics. The system is designed to:</p>
+                    <ul class="list-disc list-inside content-text space-y-2 pl-4">
+                        <li>Identify subtle patterns and precursors leading to critical behavioral events (e.g., imminent lane departures).</li>
+                        <li>Issue timely warnings and actionable advice *before* an undesirable outcome materializes.</li>
+                        <li>Enhance proactive decision-making and risk mitigation in simulated driving.</li>
+                    </ul>
+                    <p class="content-text mt-4">This capability is paramount in applications where early intervention can prevent significant negative consequences or improve performance.</p>
+                </div>
+                <div class="stat-card md:col-span-2">
+                    <h3 class="text-xl font-semibold mb-4 brand-text-pink">Hardware & Infrastructure Evolution as Enablers</h3>
+                    <p class="content-text mb-3">The performance and capabilities of this advanced analytical system are intrinsically linked to the underlying hardware infrastructure. Current high-performance setups for demanding real-time analytics typically feature:</p>
+                    <ul class="list-disc list-inside content-text space-y-2 pl-4">
+                        <li><strong>High-Performance GPUs:</strong> Essential for parallel processing in training deep learning models and for accelerating real-time inference (e.g., NVIDIA RTX 3090 24GB or newer).</li>
+                        <li><strong>Powerful Multi-Core CPUs:</strong> Critical for managing the overall data pipeline, complex computations, and system orchestration (e.g., AMD Ryzen 9 series).</li>
+                        <li><strong>High-Bandwidth RAM:</strong> Large capacities (e.g., 128GB+) of fast system memory are necessary to handle extensive datasets, complex model architectures, and concurrent processing tasks.</li>
+                    </ul>
+                    <p class="content-text mt-4">Ongoing advancements in GPU/CPU architectures, specialized AI accelerators, and memory technologies are expected to further reduce latency, increase processing power, and enable even more sophisticated analytical models, continually driving innovation and expanding project capabilities.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="conclusion" class="mb-12 scroll-mt-20">
+            <h2 class="text-2xl sm:text-3xl font-semibold mb-6 text-center">Conclusion: The Ascendant Trajectory of Data-Driven Behavioral Analytics</h2>
+            <p class="section-intro-text text-center max-w-3xl mx-auto">
+                This is the initial PoC data pipeline for real-time driver behavior analysis within the CARLA simulator. By focusing on high-performance analytics, sophisticated AI models, and actionable feedback, this system represents an actionable plan to provide a product for the client, highlighting the significant step towards enhancing driver training and safety evaluation.
+            </p>
+            <p class="section-intro-text text-center max-w-3xl mx-auto mt-4">
+                Future developments will likely concentrate on achieving even greater predictive accuracy, fostering more intuitive and effective human-AI interaction, and broadening the scope of behavioral analysis. The responsible development and deployment of these technologies, with careful attention to ethical considerations such as fairness, privacy, and bias mitigation, will be paramount as they become increasingly integrated into decision-making processes.
+            </p>
+        </section>
+
+    </main>
+
+    <footer class="bg-gray-800 text-white py-10 text-center">
+        <p>&copy; 2025 CARLA AI-Driven Behavioral Analysis Project.</p>
+        <p class="text-sm text-gray-400 mt-1">HBSS Connect Corp. </p>
+        <p class="text-sm text-gray-400 mt-1">Data pipeline and insights derived from project proposal documentation.</p>
+    </footer>
+
+    <script>
+        const tooltipTitleCallback = function(tooltipItems) {
+            const item = tooltipItems[0];
+            let label = item.chart.data.labels[item.dataIndex];
+            if (Array.isArray(label)) {
+              return label.join(' ');
+            } else {
+              return label;
+            }
+        };
+
+        const processLabels = (labels) => {
+            return labels.map(label => {
+                if (typeof label === 'string' && label.length > 16) {
+                    const words = label.split(' ');
+                    const lines = [];
+                    let currentLine = '';
+                    words.forEach(word => {
+                        if ((currentLine + word).length > 16 && currentLine.length > 0) {
+                            lines.push(currentLine.trim());
+                            currentLine = word + ' ';
+                        } else {
+                            currentLine += word + ' ';
+                        }
+                    });
+                    lines.push(currentLine.trim());
+                    return lines;
+                }
+                return label;
+            });
+        };
+
+        const featureImportanceCtx = document.getElementById('featureImportanceChart');
+        if (featureImportanceCtx) {
+            new Chart(featureImportanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: processLabels(['Deviation from Lane Center', 'Vehicle Momentum', 'Road Coeff. of Friction', 'Steering Rate of Change', 'Lateral Acceleration']),
+                    datasets: [{
+                        label: 'Relative Feature Importance',
+                        data: [0.85, 0.70, 0.65, 0.50, 0.45],
+                        backgroundColor: ['#FF7F50', '#FFD700', '#20B2AA', '#FF69B4', '#FFA07A'],
+                        borderColor: '#FFFFFF',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Importance Score', color: '#4B5563' },
+                            ticks: { color: '#6B7280' },
+                            grid: { color: '#E5E7EB' }
+                        },
+                        y: {
+                            ticks: { color: '#6B7280' },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: 'Key Factors in Initial Risk Scoring Models', color: '#374151', font: { size: 16 } },
+                        tooltip: { callbacks: { title: tooltipTitleCallback }, bodyFont: { size: 12 }, titleFont: {size: 14} }
+                    }
+                }
+            });
+        }
+
+        const llmComparisonCtx = document.getElementById('llmComparisonChart');
+        if (llmComparisonCtx) {
+            new Chart(llmComparisonCtx, {
+                type: 'bar',
+                data: {
+                    labels: processLabels(['Nematron LLM (Enhanced Reasoning)', 'Alternative Math LLM (Optimized Speed)']),
+                    datasets: [{
+                        label: 'Parameter Count (Billions)',
+                        data: [1.5, 0.6],
+                        backgroundColor: ['#20B2AA', '#FFD700'],
+                        borderColor: '#FFFFFF',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Parameters (Billions)', color: '#4B5563' },
+                            ticks: { color: '#6B7280' },
+                            grid: { color: '#E5E7EB' }
+                        },
+                        x: {
+                            ticks: { color: '#6B7280' },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: 'LLM Solution Tiers by Model Size', color: '#374151', font: {size: 16} },
+                        tooltip: { callbacks: { title: tooltipTitleCallback }, bodyFont: { size: 12 }, titleFont: {size: 14} }
+                    }
+                }
+            });
+        }
+
+        // Smooth scroll for navigation links
+        document.querySelectorAll('nav a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
