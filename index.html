@@ -168,6 +168,46 @@
             width: 100%;
         }
 
+        /* Hero GIF Background */
+        .hero-gif-container {
+            position: relative;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto 40px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hero-gif-container img {
+            width: 20%;
+            height: auto;
+            display: block;
+            mask-image: linear-gradient(to right,
+                        transparent 0%,
+                        black 10%,
+                        black 90%,
+                        transparent 100%),
+                        linear-gradient(to bottom,
+                        transparent 0%,
+                        black 10%,
+                        black 90%,
+                        transparent 100%);
+            mask-composite: intersect;
+            -webkit-mask-image: linear-gradient(to right,
+                        transparent 0%,
+                        black 10%,
+                        black 90%,
+                        transparent 100%),
+                        linear-gradient(to bottom,
+                        transparent 0%,
+                        black 10%,
+                        black 90%,
+                        transparent 100%);
+            -webkit-mask-composite: source-in;
+        }
+
         /* Hero Section */
         .hero {
             min-height: 100vh;
@@ -175,7 +215,8 @@
             align-items: center;
             justify-content: center;
             position: relative;
-            padding: 100px 50px 50px;
+            padding: 50px 50px;
+            flex-direction: column;
         }
 
         .hero-content {
@@ -625,6 +666,9 @@
 
     <!-- Hero Section -->
     <section class="hero" id="home">
+        <div class="hero-gif-container">
+            <img src="https://raw.githubusercontent.com/aiaxmaior/aiaxmaior.github.io/refs/heads/main/assets/test.gif" alt="Wavy Background">
+        </div>
         <div class="hero-content">
             <h1>From Ocean Depths to Digital Frontiers</h1>
             <p class="tagline">Marine Scientist → Data Scientist → AI Engineer</p>
