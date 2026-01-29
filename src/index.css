@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Ocean Blue */
+  --ocean-deep: #0a1628;
+  --ocean-mid: #1e3a5f;
+  --ocean-light: #3e6b9b;
+  --ocean-surface: #00d4ff;
+  
+  /* Automotive Metal Gray */
+  --metal-dark: #1a1d21;
+  --metal-mid: #3d4449;
+  --metal-light: #6b7280;
+  --metal-chrome: #e5e7eb;
+  
+  /* Accent */
+  --accent: #00ff88;
+  --accent-cyan: #00d4ff;
+  --accent-purple: #9d4edd;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--ocean-deep);
+  color: #e8f4fd;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ocean-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ocean-mid);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ocean-light);
+}
+
+/* Selection */
+::selection {
+  background: rgba(0, 255, 136, 0.3);
+  color: #fff;
+}
+
+/* Utility classes */
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent to-accent-cyan;
+  }
+  
+  .text-gradient-ocean {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-ocean-light to-accent-cyan;
+  }
+  
+  .glass {
+    @apply bg-ocean-mid/40 backdrop-blur-md border border-accent/20;
+  }
+  
+  .glass-dark {
+    @apply bg-ocean-deep/80 backdrop-blur-md border border-ocean-mid/50;
+  }
+  
+  .glow {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+  }
+  
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+  }
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Smooth transitions for interactive elements */
+button, a, .interactive {
+  transition: all 0.3s ease;
+}
